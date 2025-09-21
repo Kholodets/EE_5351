@@ -1,0 +1,27 @@
+nvcc -c -o matrixmul_cu.o matrixmul.cu -I/usr/local/cuda/include -std=c++11 -gencode=arch=compute_86,code=\"sm_86,compute_86\" -O2
+/usr/lib/gcc/x86_64-pc-linux-gnu/14.3.1/include/c++/type_traits(1610): error: "__is_nothrow_new_constructible" is not a function or static data member
+      constexpr bool __is_nothrow_new_constructible
+                     ^
+
+/usr/lib/gcc/x86_64-pc-linux-gnu/14.3.1/include/c++/type_traits(1610): error: "constexpr" is not valid here
+      constexpr bool __is_nothrow_new_constructible
+      ^
+
+/usr/lib/gcc/x86_64-pc-linux-gnu/14.3.1/include/c++/bits/stl_pair.h(1190): error: "__is_pair" is not a function or static data member
+      inline constexpr bool __is_pair = false;
+                            ^
+
+/usr/lib/gcc/x86_64-pc-linux-gnu/14.3.1/include/c++/bits/stl_pair.h(1190): error: "constexpr" is not valid here
+      inline constexpr bool __is_pair = false;
+             ^
+
+/usr/lib/gcc/x86_64-pc-linux-gnu/14.3.1/include/c++/bits/stl_pair.h(1193): error: __is_pair is not a template
+      inline constexpr bool __is_pair<pair<_Tp, _Up>> = true;
+                            ^
+
+/usr/lib/gcc/x86_64-pc-linux-gnu/14.3.1/include/c++/bits/stl_pair.h(1193): error: "constexpr" is not valid here
+      inline constexpr bool __is_pair<pair<_Tp, _Up>> = true;
+             ^
+
+6 errors detected in the compilation of "matrixmul.cu".
+make: *** [Makefile:18: matrixmul_cu.o] Error 2
