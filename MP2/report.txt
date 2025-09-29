@@ -1,3 +1,12 @@
+EE5351 MP2
+Lexi MacLean macle119
+
+For this Machine Problem I implemented a single kernel function and its wrapper function to perform matrix multiplication.
+The method employed here improves upon last weeks matrix multiplication by improving memory access patterns and allowing for arbitrarily sized matricies.
+This method coalesces memory requests from adjacent threads in each warp, which should take advantage of the bursting characteristics of the memory bus, and stores a tile of memory from the factor matricies in the block's shared memory, which is much faster than the global memory where the matricies are.
+
+
+
 Tiled Matrix Multiplication
 
     In your kernel implementation, how many threads can be simultaneously executing
@@ -6,3 +15,9 @@ Tiled Matrix Multiplication
     your kernel (although compilation will fail, it will only do so after
     compiling the kernel and displaying the relevant information.)
 
+The output of nvcc --ptxas-options="-v" says that 30 registers, one barrier, 8192 bytes smem, and 392 bytes cmem are used
+I assume this is per-thread
+The max number of registers per multiprocessor on compute capability 6.1 is 64K (i dont know if this is Ki or K... :( ), 20*64000/30 = 42666 threads
+The number of threads allowed outright by the multiprocessor limitation is only 2048 * 20 = 40960, however, which is a bit lower, so this will be the limit.
+
+Nsight though gives me a different answer, saying I am limited by the # of registers per multiprocessor on compute 6.1....

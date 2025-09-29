@@ -14,7 +14,7 @@ void FreeDeviceMatrix(Matrix* M);
 void FreeMatrix(Matrix* M);
 
 
-#define TILE_WIDTH 16
+#define TILE_WIDTH 32
 
 
 // Matrix multiplication kernel thread specification
@@ -75,10 +75,22 @@ void MatrixMulOnDevice(const Matrix M, const Matrix N, Matrix P)
 	dim3 dimGrid(xtiles, ytiles);
 	dim3 dimBlock(TILE_WIDTH, TILE_WIDTH);
 
+	cudaEvent_t start, stop;
+
+	cudaEventCreate(&start);
+	cudaEventCreate(&stop);
+	cudaEventRecord(start, 0);
+
 	// Launch the device computation threads!
 	MatrixMulKernel<<<dimGrid, dimBlock>>>(Md, Nd, Pd);
 
+	cudaDeviceSynchronize();
+	cudaEventRecord(stop, 0);
+	cudaEventSynchronize(stop);
+	float ms_elapsed;
+	cudaEventElapsedTime(&ms_elapsed, start, stop);
 
+	printf("%fms\n", ms_elapsed);
 	// Read P from the device
 	CopyFromDeviceMatrix(P, Pd);
 

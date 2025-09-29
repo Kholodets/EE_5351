@@ -13,7 +13,7 @@ Matrix AllocateMatrix(int height, int width, int init);
 void CopyToDeviceMatrix(Matrix Mdevice, const Matrix Mhost);
 void CopyFromDeviceMatrix(Matrix Mhost, const Matrix Mdevice);
 
-#define TILE_WIDTH 16
+#define TILE_WIDTH 32
 
 // Matrix multiplication kernel thread specification
 __global__ void MatrixMulKernel(Matrix M, Matrix N, Matrix P)
@@ -64,7 +64,23 @@ void MatrixMulOnDevice(const Matrix M, const Matrix N, Matrix P)
 	dim3 dimGrid(xtiles, ytiles);
 	dim3 dimBlock(TILE_WIDTH, TILE_WIDTH);
 
+	cudaEvent_t start, stop;
+
+	cudaEventCreate(&start);
+	cudaEventCreate(&stop);
+	cudaEventRecord(start, 0);
+
+
 	MatrixMulKernel<<<dimGrid, dimBlock>>>(M_d, N_d, P_d);
+
+
+	cudaDeviceSynchronize();
+	cudaEventRecord(stop, 0);
+	cudaEventSynchronize(stop);
+	float ms_elapsed;
+	cudaEventElapsedTime(&ms_elapsed, start, stop);
+	printf("%fms\n", ms_elapsed);
+
 
 	//cudaDeviceSynchronize();
 	//again, shouldn't be necessary
