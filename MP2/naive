@@ -1,0 +1,79 @@
+/* Matrix multiplication: P = M * N.
+ * Device code.
+ */
+
+//student: lexi maclean macle119
+
+#include <stdio.h>
+#include "matrixmul.h"
+
+//forward declarations
+Matrix AllocateDeviceMatrix(const Matrix M);
+Matrix AllocateMatrix(int height, int width, int init);
+void CopyToDeviceMatrix(Matrix Mdevice, const Matrix Mhost);
+void CopyFromDeviceMatrix(Matrix Mhost, const Matrix Mdevice);
+
+#define TILE_WIDTH 16
+
+// Matrix multiplication kernel thread specification
+__global__ void MatrixMulKernel(Matrix M, Matrix N, Matrix P)
+{
+	//Multiply the two matrices
+	
+	//naive approach with one block
+	//appropriate element in P is just the position
+	//of the thread in the block
+	int row = threadIdx.y + blockIdx.y * TILE_WIDTH;
+	int col = threadIdx.x + blockIdx.x * TILE_WIDTH;
+
+	float c = 0;
+
+	if (col < P.width && row < P.height) {
+		for (int i = 0; i < M.width; ++i) {
+			c += M.elements[M.width * row + i] * N.elements[N.width * i + col];
+		}
+
+		P.elements[row * P.width + col] = c;
+	}
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//! Run a simple test for CUDA
+////////////////////////////////////////////////////////////////////////////////
+void MatrixMulOnDevice(const Matrix M, const Matrix N, Matrix P)
+{
+	//Interface host call to the device kernel code and invoke the kernel
+	
+	Matrix M_d = AllocateDeviceMatrix(M);
+	Matrix N_d = AllocateDeviceMatrix(N);
+
+	Matrix P_d = AllocateDeviceMatrix(P);
+
+	CopyToDeviceMatrix(M_d, M);
+	CopyToDeviceMatrix(N_d, N);
+
+	//cudaDeviceSynchronize(); 
+	//not necessary? all these calls should be on the same stream
+
+	//instructions say 1 thread block is enough for entire matrix
+	//so, since this is naive approach, we'll just make the 1 block
+	//with heightXwidth threads
+	
+	int xtiles = (P.width + TILE_WIDTH - 1) / TILE_WIDTH;
+	int ytiles = (P.height + TILE_WIDTH - 1) / TILE_WIDTH;
+	dim3 dimGrid(xtiles, ytiles);
+	dim3 dimBlock(TILE_WIDTH, TILE_WIDTH);
+
+	MatrixMulKernel<<<dimGrid, dimBlock>>>(M_d, N_d, P_d);
+
+	//cudaDeviceSynchronize();
+	//again, shouldn't be necessary
+
+	//P_d should now be populated with the solution
+	CopyFromDeviceMatrix(P, P_d);
+
+	//what...no free functions?
+	cudaFree(M_d.elements);
+	cudaFree(N_d.elements);
+	cudaFree(P_d.elements); 
+}
