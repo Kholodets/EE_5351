@@ -38,6 +38,7 @@ __global__ void MatrixMulKernel(Matrix M, Matrix N, Matrix P)
 	float val = 0;
 	for(int m = 0; m < tiles; ++m) {
 		//adjacent threads should access adjacent memory when loading M_s and N_s
+		
 	
 		M_s[ty * TILE_WIDTH + tx] = TILE_WIDTH * m + tx < M.width && row < M.height ? M.elements[M.pitch * row + TILE_WIDTH * m + tx] : 0;
 		N_s[ty * TILE_WIDTH + tx] = m * TILE_WIDTH + ty < N.height && col < N.width ? N.elements[(m * TILE_WIDTH + ty)*N.pitch + col] : 0;
@@ -77,24 +78,24 @@ void MatrixMulOnDevice(const Matrix M, const Matrix N, Matrix P)
 	dim3 dimGrid(xtiles, ytiles);
 	dim3 dimBlock(TILE_WIDTH, TILE_WIDTH);
 
-	/* timing code
+	// timing code
 	cudaEvent_t start, stop;
 	cudaEventCreate(&start);
 	cudaEventCreate(&stop);
 	cudaEventRecord(start, 0);
-	*/
+	
 
 	// Launch the device computation threads!
 	MatrixMulKernel<<<dimGrid, dimBlock>>>(Md, Nd, Pd);
 
-	/* timing code
+	// timing code
 	cudaDeviceSynchronize();
 	cudaEventRecord(stop, 0);
 	cudaEventSynchronize(stop);
 	float ms_elapsed;
 	cudaEventElapsedTime(&ms_elapsed, start, stop);
 	printf("%fms\n", ms_elapsed);
-	*/
+	
 
 	// Read P from the device
 	CopyFromDeviceMatrix(P, Pd);
