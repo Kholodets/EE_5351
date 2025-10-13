@@ -6,8 +6,8 @@ void CopyToDeviceMatrix(Matrix Mdevice, const Matrix Mhost);
 void CopyFromDeviceMatrix(Matrix Mhost, const Matrix Mdevice);
 void FreeDeviceMatrix(Matrix* M);
 
-#define TILE_SIZE 28
-#define BLOCK_SIZE TILE_SIZE (TILE_SIZE + KERNEL_SIZE -1)
+//#define TILE_SIZE 28
+//#define BLOCK_SIZE TILE_SIZE (TILE_SIZE + KERNEL_SIZE -1)
 
 // includes, kernels
 __constant__ float Mc[KERNEL_SIZE * KERNEL_SIZE];
@@ -26,7 +26,7 @@ __global__ void ConvolutionKernel(Matrix N, Matrix P)
 	int col_o = blockIdx.x * TILE_SIZE + tx;
 
 	//input from N location
-	int n = MASK_SIZE/2;
+	int n = KERNEL_SIZE/2;
 	int row_i = row_o - n;
 	int col_i = col_o - n;
 
@@ -48,9 +48,9 @@ __global__ void ConvolutionKernel(Matrix N, Matrix P)
 	//could reorder the threads within the tile to put all the waiting threads at the end
 	//and thus in warp with each other
 	if (ty < TILE_SIZE && tx < TILE_SIZE) {
-		for(i = 0; i < KERNEL_SIZE; ++i) {
-			for(j = 0; j < KERNEL_SIZE; ++j) {
-				output += Mc[i * KERNEL_SIZE + j] * Ns[(ty + i) * BLOCK_SIZE + tx + j];
+		for(int i = 0; i < KERNEL_SIZE; ++i) {
+			for(int j = 0; j < KERNEL_SIZE; ++j) {
+				output += Mc[(KERNEL_SIZE-i) * KERNEL_SIZE + (KERNEL_SIZE-j)] * Ns[(ty + i) * BLOCK_SIZE + tx + j];
 			}
 		}
 	}
@@ -70,7 +70,7 @@ void ConvolutionOnDevice(const Matrix M, const Matrix N, Matrix P)
 	//Matrix Md = AllocateDeviceMatrix(M);
 	//CopyToDeviceMatrix(Md, M);
 	
-	cudaMemcypToSymbol(Mc, M.elements, KERNEL_SIZE * KERNEL_SIZE * sizeof(float));
+	cudaMemcpyToSymbol(Mc, M.elements, KERNEL_SIZE * KERNEL_SIZE * sizeof(float));
 
 
 	Matrix Nd = AllocateDeviceMatrix(N);
@@ -82,8 +82,8 @@ void ConvolutionOnDevice(const Matrix M, const Matrix N, Matrix P)
 
 	// Setup the execution configuration
 
-	int xtiles = (N.width + TILE_WIDTH - 1) / TILE_WIDTH;
-	int ytiles = (N.height + TILE_WIDTH - 1) / TILE_WIDTH;
+	int xtiles = (N.width + TILE_SIZE - 1) / TILE_SIZE;
+	int ytiles = (N.height + TILE_SIZE - 1) / TILE_SIZE;
 
 	dim3 dimBlock(BLOCK_SIZE, BLOCK_SIZE);
 	dim3 dimGrid(xtiles, ytiles);
@@ -97,7 +97,7 @@ void ConvolutionOnDevice(const Matrix M, const Matrix N, Matrix P)
 	CopyFromDeviceMatrix(P, Pd);
 
 	// Free device matrices
-	FreeDeviceMatrix(&Md);
+	//FreeDeviceMatrix(&Md);
 	FreeDeviceMatrix(&Nd);
 	FreeDeviceMatrix(&Pd);
 }
