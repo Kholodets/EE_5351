@@ -26,9 +26,8 @@ __global__ void ConvolutionKernel(Matrix N, Matrix P)
 	int col_o = blockIdx.x * TILE_SIZE + tx;
 
 	//input from N location
-	int n = KERNEL_SIZE/2;
-	int row_i = row_o - n;
-	int col_i = col_o - n;
+	int row_i = row_o - KS_DIV_2;
+	int col_i = col_o - KS_DIV_2;
 
 
 	//copy needed values of N into shared memory Ns
@@ -50,16 +49,19 @@ __global__ void ConvolutionKernel(Matrix N, Matrix P)
 	if (ty < TILE_SIZE && tx < TILE_SIZE) {
 		for(int i = 0; i < KERNEL_SIZE; ++i) {
 			for(int j = 0; j < KERNEL_SIZE; ++j) {
-				output += Mc[(KERNEL_SIZE-i) * KERNEL_SIZE + (KERNEL_SIZE-j)] * Ns[(ty + i) * BLOCK_SIZE + tx + j];
+				output += Mc[i * KERNEL_SIZE + j] * Ns[(ty + i) * BLOCK_SIZE + tx + j];
 			}
+		}
+
+
+		//write output to P
+		//again, some divergence here, oh well
+		if (row_o < P.height && col_o < P.width) {
+			P.elements[row_o * P.pitch + col_o] = output;
+	
 		}
 	}
 
-	//write output to P
-	//again, some divergence here, oh well
-	if (row_o < P.height && col_o < P.width) {
-		P.elements[row_o * P.pitch + col_o] = output;
-	}
 }
 
 
@@ -90,8 +92,28 @@ void ConvolutionOnDevice(const Matrix M, const Matrix N, Matrix P)
 
 
 	// Launch the device computation threads!
+	/*cudaEvent_t start, stop;
+	float time;
+	cudaEventCreate(&start);
+	cudaEventCreate(&stop);
+
+	cudaEventRecord(start, 0);
+	*/
 
 	ConvolutionKernel<<<dimGrid, dimBlock>>>(Nd, Pd);
+	
+	/*cudaEventRecord(stop, 0);
+	cudaEventSynchronize(stop);
+	cudaEventElapsedTime(&time, start, stop);
+	cudaEventDestroy(start);
+	cudaEventDestroy(stop);
+	printf("%f, ", time);
+	*/
+
+	//cudaDeviceSynchronize();
+
+	//fprintf(stderr, "%s\n", cudaGetErrorString(cudaGetLastError()));
+	
 
 	// Read P from the device
 	CopyFromDeviceMatrix(P, Pd);

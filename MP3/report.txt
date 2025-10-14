@@ -1,4 +1,12 @@
 Tiled 2D Convolution
+Lexi MacLean
+MP3
+
+For this machine problem, I implemented a 2D convolution kernel to run on the device.
+The structure of the wrapper function was provided for us, and the algorithm I used was based on that discussed in lecture.
+The implementation uses constant memory to cache the mask/kernel matrix, which is the same for every block/thread.
+It uses a tiling structure in shared memory, similar to the matrix multiplication from last time, to store segments of the input array so blocks may access it more quickly than from global memory.
+I also added some timing code for benchmarking which is commented out in the submitted file. 
 
 3)  Report.
     It's time to do some performance testing and analysis.  Included in the 
@@ -18,9 +26,24 @@ Tiled 2D Convolution
     1.  What is the measured floating-point computation rate for the CPU and GPU kernels 
     in this application?  How do they each scale with the size of the input? 
 
+    I ran a series of benchmarks on the kernel itself, the kernel wrapper function, and on the CPU based function to test this.
+    I plotted the time taken as a function of the length of the side of the input array.
+    By getting the slope of this curve and taking its inverse, I can approximate the FLOPs.
+    I'm multiplying the inverses of the slopes i got by 50, one for each multiplication and addition made for each element of the 5x5 kernel on each element of the array.
+    The cpu function clocks in at 5 MFLOPs.
+    The GPU kernel comes in at 2.2 GFLOPs. 
+    Both of these scale linearly with the total size of the input array, which is quadratically from the length of the side.
+    See attached image for desmos with this data.
+
 
     2.  How much time is spent as an overhead cost of using the GPU for
     computation?  Consider all code executed within your host function, with
     the exception of the kernel itself, as overhead.  How does the overhead scale 
     with the size of the input?
+
+    I ran separate benchmarks timing the kernel and the whole wrapper function.
+    I observed times on the order of ~100ms on the wrapper function and those of ~1ms on the kernel itself.
+    The total overhead did increase as a function of the input size of the array, roughly linearly/quadratically with the dimension.
+    This makes sense as I suspect most of this time is for copying memory.
+    At these scales, I saw overhead in the 100ms range, this would increase as the problem got bigger, but according to my regression, eventually the actual computation would begin to dominate.
 
