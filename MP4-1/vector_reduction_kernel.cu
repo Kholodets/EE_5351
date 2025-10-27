@@ -27,7 +27,8 @@ __global__ void reduction(unsigned int *in_data, unsigned int *out_data, int n)
 		}
 	}
 
-	out_data[blockIdx.x] = partialSum[0];			
+	if (t == 0)
+		out_data[blockIdx.x] = partialSum[0];			
 }
 
 // **===----------------- Modify this function ---------------------===**
@@ -63,8 +64,8 @@ unsigned int computeOnDevice(unsigned int* h_data, int num_elements)
 	
 	unsigned int res = a_h[0];
 
-	cudaFree(&a_d);
-	cudaFree(&b_d);
+	cudaFree(a_d);
+	cudaFree(b_d);
 	free(a_h);
 
 	return res;
