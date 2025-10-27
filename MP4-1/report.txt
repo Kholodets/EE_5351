@@ -1,0 +1,27 @@
+Data Parallel Reduction
+
+Lexi MacLean
+MP4-1
+
+I implemented parallel map-reduce for obtaining the sum of all elements in an array.
+It works by partitioning the input array into tiles.
+Each thread block reads in one tile of the input and computes the sum of that section.
+Each thread makes a series of adds to reduce the tile to a single input.
+Since the tile is loaded into shared memeory, this reduction does not have to wait for global memory reads and writes.
+
+1.  How many times does your thread block synchronize to reduce its portion
+    of an array to a single value?
+
+    It syncs its threads once for every halving of the stride, which starts at the block dimension, so it syncs log_2 (block_size) times.
+
+
+
+2.  What is the minimum, maximum, and average number of "real" operations
+    that a thread will perform? "Real" operations are those that directly
+    contribute to the final reduction value, i.e., iterations of the reduction
+    computation.
+
+    If only counting "real" operations, since tile a block is computing could not extend the full size of the block, many threads could be doing 0 real operations, operating only on 0 values outside the input array.
+    Threads in blocks with a full tile do a minimum of 1 "real" operation, dropping off after the first addition.
+    The maximum real operations a thread makes is the same log_2 (block_size) as before, if it's the final thread to make the final reduction.
+    The average real operations is (block_size - 1)/log_2 (block_size).
