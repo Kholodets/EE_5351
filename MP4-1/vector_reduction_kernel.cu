@@ -1,5 +1,7 @@
-#include <stdlib.h>
-#include <stdio.h>
+/*
+ * EE 5351 MP4-1
+ * Lexi MacLean
+ */
 #define BLOCK_SIZE 16
 #define TILE_SIZE (BLOCK_SIZE * 2)
 #define THRESHOLD 1
