@@ -13,6 +13,8 @@ __global__ void scan_kernel(unsigned int *in_data, unsigned int *out_data, int n
 void prescanArray(unsigned int *outArray, unsigned int *inArray, unsigned int* blockSums, int numElements);
 unsigned int* preallocBlockSums(int num_elements);
 void deallocBlockSums(unsigned int* bs_d);
+void print_d_ar(unsigned int *ar, int n);
+
 // Device Functions
 
 
@@ -35,6 +37,10 @@ __global__ void add_all(unsigned int *data, int n, unsigned int *aux)
 		a += b;
 		data[t] = a;
 	}
+
+	if (t == 0) {
+		printf("%d %d\n", data[0], aux[0]);
+	}
 }
 		
 
@@ -48,7 +54,9 @@ __global__ void scan_kernel(unsigned int *in_data, unsigned int *out_data, int n
 	scan_array[t] = start + 2 >= n ? 0 : in_data[start + t];
 	scan_array[blockDim.x + t] = start + blockDim.x + t >= n ? 0 : in_data[start + blockDim.x + t];
 
-	//reduction step
+	__syncthreads();
+
+//reduction step
 	int stride = 1;
 	while (stride <= BLOCK_SIZE) {
 		int index = (threadIdx.x + 1) * stride * 2 - 1;
@@ -58,36 +66,13 @@ __global__ void scan_kernel(unsigned int *in_data, unsigned int *out_data, int n
 		stride <<= 1;
 		
 		__syncthreads();
-
-/*		if (t == 0) {
-			for (int k = 0; k < BLOCK_SIZE * 2; ++k) {
-				printf("%d ", scan_array[k]);
-			}
-			printf("\n");
-		}
-*/
 	}
 
-	__syncthreads();
-	
-	if (t == 0) {
-			for (int k = 0; k < BLOCK_SIZE * 2; ++k) {
-				printf("%d ", scan_array[k]);
-			}
-			printf("\n");
-	}
 
 
 	//distribution step
 	stride = BLOCK_SIZE / 2;
 	while (stride) {
-
-		/*if (t == 0) {
-			for (int k = 0; k < BLOCK_SIZE * 2; ++k) {
-				printf("%d ", scan_array[k]);
-			}
-			printf("\n");
-		}*/		
 		int index = (threadIdx.x + 1) * stride * 2 - 1;
 		if ((index + stride) < 2 * BLOCK_SIZE) {
 			scan_array[index + stride] += scan_array[index];
@@ -108,6 +93,10 @@ __global__ void scan_kernel(unsigned int *in_data, unsigned int *out_data, int n
 
 	if (t == 0) {
 		aux[blockIdx.x] = scan_array[2 * BLOCK_SIZE - 1];
+		printf("putting %d, index %d\n", scan_array[2*BLOCK_SIZE - 1], blockIdx.x);
+		for (int k = 0; k < blockDim.x * 2; ++k) {
+			printf("%d ", scan_array[k]);
+		} printf("\n");
 	}
 
 }
@@ -124,22 +113,39 @@ __global__ void scan_kernel(unsigned int *in_data, unsigned int *out_data, int n
 void prescanArray(unsigned int *outArray, unsigned int *inArray, unsigned int* blockSums, int numElements)
 {   //all pointers are to device memory regions
     int tiles = (numElements + TILE_SIZE - 1) / TILE_SIZE;
-    printf("reducing from %d to %d\n", numElements, tiles);
+    printf("1: reducing from %d to %d\n", numElements, tiles);
     scan_kernel<<<tiles, BLOCK_SIZE>>>(inArray, outArray, numElements, blockSums);
-
+    print_d_ar(outArray, numElements);
+    print_d_ar(blockSums, tiles);
     if (tiles > 1) {
+	    unsigned int *outBlocks = preallocBlockSums(numElements);
 	    unsigned int *nextBlocks = preallocBlockSums(tiles);
-	    prescanArray(blockSums, blockSums, nextBlocks, tiles);
+	    printf("2: recursively calling on blocksums:\n");
+	    prescanArray(outBlocks, blockSums, nextBlocks, tiles);
+	    print_d_ar(outBlocks, tiles);
+	    printf("3: calling add_all\n");
+	    add_all<<<tiles - 1, BLOCK_SIZE>>>(outArray + TILE_SIZE, numElements - TILE_SIZE, outBlocks);
+	    print_d_ar(outArray, numElements);
 	    deallocBlockSums(nextBlocks);
-	    add_all<<<tiles - 1, BLOCK_SIZE>>>(outArray + TILE_SIZE, numElements - TILE_SIZE, blockSums);
+	    deallocBlockSums(outBlocks);
     }
 
 
 }
 // **===-----------------------------------------------------------===**
 
+void print_d_ar(unsigned int *ar_d, int n)
+{
+	unsigned int *ar_h = (unsigned int *) malloc(sizeof(unsigned int) * n);
+	cudaMemcpy(ar_h, ar_d, n * sizeof(unsigned int), cudaMemcpyDeviceToHost);
+	for (int i = 0; i < n; ++i) {
+		printf("%d ", ar_h[i]);
+	} printf("\n");
+	free(ar_h);
+}
+
 // Use the function to allocate your block sums here
-unsigned int* preallocBlockSums(int num_elements)
+unsigned int *preallocBlockSums(int num_elements)
 {
 	unsigned int* bs_d = 0; //assign your device memory pointer to this variable
 	// =========================================
@@ -152,7 +158,7 @@ unsigned int* preallocBlockSums(int num_elements)
 }
 
 // Use the function to deallocate (free) your block sums
-void deallocBlockSums(unsigned int* bs_d)
+void deallocBlockSums(unsigned int *bs_d)
 {
 	cudaFree(bs_d);
 }
