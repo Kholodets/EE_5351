@@ -8,8 +8,11 @@
 #include <math.h>
 #include <time.h>
 
-#define DEFAULT_NUM_ELEMENTS 16000000 
+#define DEFAULT_NUM_ELEMENTS 99999
 #define MAX_RAND 3
+
+//#define DEFAULT_NUM_ELEMENTS 16000000 
+//#define MAX_RAND 3
 
 //Defined in scan_largearray_kernel.cu - these are forward declarations, don't modify them
 extern const int NUM_BANKS;

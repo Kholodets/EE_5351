@@ -3,12 +3,21 @@ to 16777216. Set #define MAX RAND to 3. Then, record the performance
 results when you run the code without arguments. Include the host (CPU)
 and device (GPU) processing times and the speedup.
 
+On my system (i9-11900k, RTX 3080Ti), processing 16777216 elements takes 8.77ms on the CPU and 0.549ms on the GPU.
+This is a speedup of about 15.9X. for other similar sizes, I see similar 15-20x speedups.
+For much larger sizes I get a better speedup though, approaching ~50.
 
 2. Describe how you handled input arrays that are not a power of two in size.
 Also describe any other performance-enhancing optimizations you added.
 
+My code can handle arrays that are not a power of two in size as my allocator for the block sums automatically buffers the array of block sums up to the tile size so that it can be scanned with the same kernel.
+
+Original input arrays should still be sized as a multiple of the tile size though.
+I have impelmented checks which read in 0s and do not write out for indecies which are out of bounds of a wrongly sized array, but this comes at the cost of a slight performance hit.
 
 3. How do the measured FLOPS rates for the CPU and GPU kernels com-
 pare with each other, and with the theoretical performance limits of each
 architecture? For your GPU implementation, discuss what bottlenecks
 are likely limiting the performance of your code.
+
+
