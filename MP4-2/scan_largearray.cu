@@ -8,7 +8,7 @@
 #include <math.h>
 #include <time.h>
 
-#define DEFAULT_NUM_ELEMENTS 99999
+#define DEFAULT_NUM_ELEMENTS 16777216
 #define MAX_RAND 3
 
 //#define DEFAULT_NUM_ELEMENTS 16000000 

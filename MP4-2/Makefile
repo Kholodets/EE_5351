@@ -1,6 +1,6 @@
 NVCC        = nvcc
 
-NVCC_FLAGS  = -I/usr/local/cuda/include -gencode=arch=compute_86,code=\"sm_86\"
+NVCC_FLAGS  = -I/usr/local/cuda/include -gencode=arch=compute_60,code=\"sm_60\"
 ifdef dbg
 	NVCC_FLAGS  += -g -G
 else
@@ -24,6 +24,9 @@ scan_largearray_cpp.o: scan_gold.cpp
 
 $(EXE): $(OBJ)
 	$(NVCC) $(OBJ) -o $(EXE) $(LD_FLAGS) $(NVCC_FLAGS)
+
+zip:
+	tar -czvf macle119_ee5351_mp4-2.tar.gz scan_largearray_kernel.cu scan_largearray.cu scan_gold.cpp Makefile report.txt
 
 clean:
 	rm -rf *.o $(EXE)

@@ -1,3 +1,10 @@
+My code implements the prefix-sum (scan) algorithm discussed in lecture.
+It uses a kernel function which copies a tile of the input array into shared memory.
+It then performs the reduction and distribution steps to convert it into a prefix-sum tile.
+The last value of this tile (the full sum of the tile) is then put into an auxilliary array.
+The wrapper function takes the auxilliary array and recursively scans it.
+The scanned sums are then added back to the appropriate tiles of target array, completing the scan.
+
 1. Near the top of scan largearray.cu, set #define DEFAULT NUM ELEMENTS
 to 16777216. Set #define MAX RAND to 3. Then, record the performance
 results when you run the code without arguments. Include the host (CPU)
@@ -7,17 +14,33 @@ On my system (i9-11900k, RTX 3080Ti), processing 16777216 elements takes 8.77ms 
 This is a speedup of about 15.9X. for other similar sizes, I see similar 15-20x speedups.
 For much larger sizes I get a better speedup though, approaching ~50.
 
+On the gpu lab machine 5, which has a GTX 1080, processing 16777216 elements takes 53.49ms on the CPU and 2.05ms on the GPU.
+This is a speedup of 25.97X.
+
 2. Describe how you handled input arrays that are not a power of two in size.
 Also describe any other performance-enhancing optimizations you added.
 
 My code can handle arrays that are not a power of two in size as my allocator for the block sums automatically buffers the array of block sums up to the tile size so that it can be scanned with the same kernel.
 
 Original input arrays should still be sized as a multiple of the tile size though.
-I have impelmented checks which read in 0s and do not write out for indecies which are out of bounds of a wrongly sized array, but this comes at the cost of a slight performance hit.
+I have impelmented checks which read in 0s and do not write out for indecies which are out of bounds of a wrongly sized array, but this comes at the cost of a slight performance hit, so I've commented them out and it has worked for all my tests since.
 
 3. How do the measured FLOPS rates for the CPU and GPU kernels com-
 pare with each other, and with the theoretical performance limits of each
 architecture? For your GPU implementation, discuss what bottlenecks
 are likely limiting the performance of your code.
 
+(well, i suppose these are ints not floats, but i digress)
+While the ideal parallel scan algorithm is work-efficient, the GPU is making more operations than the CPU.
+CPU needs only make one floating point operation per element of the array.
+The GPU makes about double this for the scan itself.
+The recursive element adds even more though.
+It then recursively scans an array about 1/1024 the originals size.
+The adding step then makes an additional operation for each element.
+Making a summation of this reveals that it's still linear growth, but about 3x the total operations of the serial algorithm.
 
+Thus, for the times observed above, the CPU is running at ~316MFLOPs. This is about half of the max OPs/s of the cpu in the lab machine, so this seems about right accounting for reads and writes.
+
+The GPU, making 3 times as many operations, with the time observed above, ran at about 24.5GFLOPs.
+This is not anywhere near the theoretical single-precision performance of 8.8TFLOPs of the GTX 1080.
+This discrepancy is likely do to significant global memory copies from each block, as well as CPU overhead to perform the recursive step including cudaMallocs to prepare the blocksums arrays.
