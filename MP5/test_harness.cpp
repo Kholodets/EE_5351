@@ -85,26 +85,47 @@ int main(int argc, char* argv[])
 
     /* Include your setup code below (temp variables, function calls, etc.) */
 
+	    /*uint32_t *in_d;
+	    cudaMalloc((void **)&in_d, sizeof(uint32_t) * INPUT_HEIGHT * INPUT_WIDTH);
+	    cudaMemcpy(in_d, input, sizeof(uint32_t) * INPUT_HEIGHT * INPUT_WIDTH, cudaMemcpyHostToDevice);
 
+	    uint32_t *bins_d;
+	    cudaMalloc((void **)&bins_d, sizeof(uint32_t) * HIST_WIDTH * HIST_HEIGHT);
+	    cudaMemset(bins_d, 0, sizeof(uint32_t) * HISTO_WIDTH * HISTO_HEIGHT);
+	    */
+	    uint32_t *in_d, *bins_d;
+    prep_hist(input, INPUT_WIDTH, INPUT_HEIGHT, &in_d, &bins_d);
 
     /* End of setup code */
 
     /* This is the call you will use to time your parallel implementation */
     TIME_IT("opt_2dhisto",
             50,
-            opt_2dhisto( /* define your own function parameters */ );)
+            opt_2dhisto(in_d, INPUT_HEIGHT * INPUT_WIDTH, bins_d);)
 
     /* Include your teardown code below (temporary variables, function calls, etc.) */
 
+	    fin_hist(in_d, bins_d, kernel_bins);
+	    /*uint32_t bins_h[HISTO_HEIGHT * HISTO_WIDTH];
+    cudaMemcpy(bins_h, bins_d, sizeof(uint32_t) * HISTO_WIDTH * HISTO_HEIGHT, cudaMemcpyDeviceToHost);
+
+    for (int i = 0; i < HISTO_HEIGHT * HISTO_WIDTH; i++) {
+	    kernel_bins[i] = bins_h[i] > 255 ? 255 : bins_h[i];
+    }
+
+    cudaFree(in_d);
+    cudaFree(bins_d);
+*/
 
 
     /* End of teardown code */
 
     int passed=1;
     for (int i=0; i < HISTO_HEIGHT*HISTO_WIDTH; i++){
+	    printf("gold: %d, kern: %d\n", gold_bins[i], kernel_bins[i]);
         if (gold_bins[i] != kernel_bins[i]){
             passed = 0;
-            break;
+            //break;
         }
     }
     (passed) ? printf("\n    Test PASSED\n") : printf("\n    Test FAILED\n");
