@@ -76,13 +76,17 @@ void fin_hist(uint32_t *in_d, uint32_t *bins_d, uint8_t *bins_h)
 
 __global__ void hist_basic(uint32_t *input, size_t n, uint32_t *bins)
 {	//int i = threadIdx.x + blockIdx.x * blockDim.x;
+	
+	for (int i = threadIdx.x; i < HISTO_WIDTH; i += blockDim.x)
+		bins[i] = 0;
+		
 	int stride = blockDim.x * gridDim.x;
 	for (int i = threadIdx.x + blockIdx.x * blockDim.x; i < n; i += stride) {
-		printf("counting %d, threadIdx.x %d, threadIdx.y %d, i %d, n %d, stride %d\n", input[i], threadIdx.x, threadIdx.y, i, (int) n, stride);
+		//printf("counting %d, threadIdx.x %d, threadIdx.y %d, i %d, n %d, stride %d\n", input[i], threadIdx.x, threadIdx.y, i, (int) n, stride);
 		int what = atomicAdd( &(bins[input[i]]), 1);
-		printf("now = %d\n", what);
+		//printf("now = %d\n", what);
 	}
-	printf("left loop[????\n");
+	//printf("left loop[????\n");
 }
 
 __global__ void hist_private(uint32_t *input, size_t n, uint32_t *bins)
@@ -90,8 +94,10 @@ __global__ void hist_private(uint32_t *input, size_t n, uint32_t *bins)
 	__shared__ uint32_t hist_tile[HISTO_WIDTH];
 
 	//initialize sm hist to 0
-	for (int i = threadIdx.x; i < HISTO_WIDTH; i += blockDim.x)
+	for (int i = threadIdx.x; i < HISTO_WIDTH; i += blockDim.x) {
 		hist_tile[i] = 0;
+		bins[i] = 0;
+	}
 
 	//int i = threadIdx.x + blockIdx.x * blockDim.x;
 	int stride = blockDim.x * gridDim.x;
