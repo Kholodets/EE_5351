@@ -31,3 +31,6 @@ $(EXE): $(OBJ)
 
 clean:
 	rm -rf *.o $(EXE)
+
+zip: $(EXE)
+	tar -czvf macle119_ee5351_mp5.tar.gz *.cpp *.cu *.h report.txt Makefile

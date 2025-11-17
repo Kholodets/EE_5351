@@ -122,7 +122,6 @@ int main(int argc, char* argv[])
 
     int passed=1;
     for (int i=0; i < HISTO_HEIGHT*HISTO_WIDTH; i++){
-	    printf("gold: %d, kern: %d\n", gold_bins[i], kernel_bins[i]);
         if (gold_bins[i] != kernel_bins[i]){
             passed = 0;
             //break;

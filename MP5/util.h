@@ -2,10 +2,8 @@
 #define UTIL_H__
 
 #define __USE_BSD 1
-//#define INPUT_WIDTH  7000
-//#define INPUT_HEIGHT 7000
-#define INPUT_WIDTH  5
-#define INPUT_HEIGHT 5
+#define INPUT_WIDTH  7000
+#define INPUT_HEIGHT 7000
 
 
 

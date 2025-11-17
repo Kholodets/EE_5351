@@ -1,0 +1,80 @@
+EE 5351 Applied Parallel Programming
+MP5: Histogramming
+Lexi MacLean
+
+This machine problem involved implementing and optimizing a kernel for generating a histogram of values from an input 2D array.
+
+To start, I wrote a basic kernel which made an atomic add back to global memory for each encountered element.
+This, understandably, was very slow, as many simultaneous threads might be trying to access the same bucket of this histogram, having to wait for the memory latency to access it, and also wait for all those other threads.
+
+Getting the basic kernel working wasn't super challenging once I understood the structure of the provided code.
+I had to marshall the data from the array of pointers to arrays to a flat 2D array, and I had to initialize the hists to zero in the kernel instead of with memset as i was originally inclined to do.
+
+It probably took about 15 minutes to write the actual kernel, 30 minutes on support code, and an hour or two on-and-off of debugging.
+
+This kernel has an abysmal <2x speedup. With it calculating on my CPU in 0.759 seconds, and on the gpu in 0.5 seconds.
+
+__global__ void hist_basic(uint32_t *input, size_t n, uint32_t *bins)
+{
+	for (int i = threadIdx.x; i < HISTO_WIDTH; i += blockDim.x)
+		bins[i] = 0;
+
+	int stride = blockDim.x * gridDim.x;
+	for (int i = threadIdx.x + blockIdx.x * blockDim.x; i < n; i += stride)
+		atomicAdd( &(bins[input[i]]), 1);
+}
+
+The first and most obvious optimization was to add privitization.
+Using shared memory for the local histogram for each block significantly reduces the number of threads trying to access any given bin at a time and makes the latency for those much faster.
+Of course, some atomic writes to global memory still need to be made at the end to collate the data from the blocks, but this is much fewer than in the original kernel.
+
+I spent another 15-20 minutes on this kernel, and some more debugging time, but a lot of that overlapped with the debugging time of the basic kernel.
+
+
+__global__ void hist_private(uint32_t *input, size_t n, uint32_t *bins)
+{
+	__shared__ uint32_t hist_tile[HISTO_WIDTH];
+
+	//initialize sm hist to 0
+	for (int i = threadIdx.x; i < HISTO_WIDTH; i += blockDim.x) {
+		hist_tile[i] = 0;
+		bins[i] = 0;
+	}
+
+	int stride = blockDim.x * gridDim.x;
+	for (int i = threadIdx.x + blockIdx.x * blockDim.x; i < n; i += stride)
+		atomicAdd( &(hist_tile[input[i]]), 1);
+
+	__syncthreads();
+	for (int i = threadIdx.x; i < HISTO_WIDTH; i += blockDim.x)
+		atomicAdd( &(bins[i]), hist_tile[i]);
+}
+
+The next optimization I attempted was to replace the atomicAdds from the previous privatized kernel with simple writes back to tiles in a global memory array of histogram bins, hoping the time spend waiting for writes would be significant enough to see additional speedup.
+Unfortunately, it didn't seem replacing the atomicAdd with a simple array write at the end of the kernel really improved speed that significantly.
+I achieved a correct answer by collating all these output tiles on the CPU, which is already cheating a bit since it isnt counted in the timing.
+But since the resulting times were so close for just the histogramming, not accounting for the reduction/collating which I otherwise would've also implemented on the GPU, I figured it wasn't worth pursuing. This sorta works out in a karmic way, as obviously a certain amount of writes are going to have to be made to each bin of the output bins anyways.
+
+Implementing this one just required changing one line from the other privitized one, and I needed to add a bit of code to my setup and finish functions to have it collate into the correct result. These additions are in the submitted code but are commented out.
+
+__global__ void hist_private_tileout(uint32_t *input, size_t n, uint32_t *bins)
+{
+	__shared__ uint32_t hist_tile[HISTO_WIDTH];
+
+	//initialize sm hist to 0
+	for (int i = threadIdx.x; i < HISTO_WIDTH; i += blockDim.x) {
+		hist_tile[i] = 0;
+		bins[i] = 0;
+	}
+
+	//int i = threadIdx.x + blockIdx.x * blockDim.x;
+	int stride = blockDim.x * gridDim.x;
+	for (int i = threadIdx.x + blockIdx.x * blockDim.x; i < n; i += stride)
+		atomicAdd( &(hist_tile[input[i]]), 1);
+
+	__syncthreads();
+	int hist_start = HISTO_WIDTH * blockIdx.x;
+	for (int i = threadIdx.x; i < HISTO_WIDTH; i += blockDim.x)
+		bins[i + hist_start] = hist_tile[i];
+}
+
