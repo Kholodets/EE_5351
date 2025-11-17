@@ -1,3 +1,10 @@
+Alexis MacLean
+EE 5351 MP6
+
+In this MP, we explored two methods of sparse matrix storage and processing.
+To demonstrate, we implemented matrix-vector multiplication, with the matrix provided given in a sparse format.
+First with CSR, the implementation reflects that of the lecture slides, having one thread per row and serially dotting together.
+The JDS implementation works with essentially the same parallelism method, just with corrected gather operation to find elements from the next columns.
 
 QUESTION:
 
@@ -11,6 +18,18 @@ row.
 
 ANSWER:
 
+(a)
+The length of the data vector will be as long as however many non-0 elements there are, so Z.
+The col_index will be the same length, Z.
+The row pointer vector will be as long as the number of rows + 1, M+1.
+Total: 2Z + M + 1.
+
+(b)
+The length of the data vector will again be however many non-0 elements there are, Z.
+the column indicies the same.
+The row number of non-zeros and row permutation vectors will both be as long as there are rows, M.
+The column start index vector will be the length of the max number of non-0 elements in a row, k.
+Total: 2Z + 2M + k
 
 
 
@@ -23,7 +42,7 @@ of non-zero they contain?
 
 ANSWER:
 
-
+Storing the rows in this way allows the matrix to be stored flatly without any 0 padding for any of the shorter rows/columns. It also reduces divergence in letting more adjacent threads drop off together as the shorter rows will be adjacent to each other.
 
 
 
@@ -35,7 +54,4 @@ the jagged diagonal instead of along the row?
 
 ANSWER:
 
-
-
-
-
+Storing it along the jagged diagonal allows for adjacent threads (which are ordered row-wise) to access adjacent elements from global memory, which provides much better memory performance.
